@@ -8,155 +8,318 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Barlow+Condensed:wght@400;600;700;900&family=Barlow:wght@400;500&display=swap');
-:root {
+:root{
   --bg:#0d1117;--panel:#161b22;--border:#30363d;
   --accent:#e8b84b;--red:#ef4444;--green:#22c55e;
   --text:#e6edf3;--muted:#8b949e;
-  --crowd-dense:#ef4444;--crowd-mod:#f97316;--crowd-light:#facc15;--crowd-free:#22c55e;
+  --c-dense:#ef4444;--c-mod:#f97316;--c-elev:#facc15;--c-free:#22c55e;
 }
 *{box-sizing:border-box;margin:0;padding:0;}
 body{font-family:'Barlow',sans-serif;background:var(--bg);color:var(--text);height:100vh;display:flex;flex-direction:column;overflow:hidden;}
-header{background:var(--panel);border-bottom:1px solid var(--border);padding:9px 16px;display:flex;align-items:center;gap:12px;flex-shrink:0;flex-wrap:wrap;}
-.logo{font-family:'Barlow Condensed',sans-serif;font-weight:900;font-size:1.15rem;letter-spacing:.05em;color:var(--accent);line-height:1.1;white-space:nowrap;}
-.logo span{color:var(--text);font-weight:400;font-size:.73rem;display:block;}
-.badge{font-family:'DM Mono',monospace;font-size:.67rem;background:var(--bg);border:1px solid var(--border);border-radius:4px;padding:3px 7px;color:var(--muted);white-space:nowrap;}
+
+header{background:var(--panel);border-bottom:1px solid var(--border);padding:8px 14px;display:flex;align-items:center;gap:10px;flex-shrink:0;flex-wrap:wrap;}
+.logo{font-family:'Barlow Condensed',sans-serif;font-weight:900;font-size:1.1rem;letter-spacing:.05em;color:var(--accent);line-height:1.1;white-space:nowrap;}
+.logo span{color:var(--text);font-weight:400;font-size:.7rem;display:block;}
+.badge{font-family:'DM Mono',monospace;font-size:.65rem;background:var(--bg);border:1px solid var(--border);border-radius:4px;padding:2px 6px;color:var(--muted);white-space:nowrap;}
 .badge b{color:var(--accent);}
-.header-actions{margin-left:auto;display:flex;gap:7px;}
-button{font-family:'Barlow Condensed',sans-serif;font-weight:600;font-size:.85rem;letter-spacing:.05em;border:none;border-radius:5px;cursor:pointer;padding:6px 12px;transition:all .15s;}
+.header-actions{margin-left:auto;display:flex;gap:6px;}
+
+.modebar{background:#0a0e14;border-bottom:1px solid var(--border);padding:6px 14px;display:flex;align-items:center;gap:8px;flex-shrink:0;flex-wrap:wrap;}
+.mode-btn{font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:.78rem;letter-spacing:.06em;border:1px solid var(--border);background:transparent;color:var(--muted);border-radius:5px;cursor:pointer;padding:5px 11px;transition:all .15s;display:flex;align-items:center;gap:5px;}
+.mode-btn.active{background:var(--accent);color:#0d1117;border-color:var(--accent);}
+.mode-btn:hover:not(.active){border-color:var(--accent);color:var(--accent);}
+.mode-sep{width:1px;height:22px;background:var(--border);}
+.mode-hint{font-size:.7rem;color:var(--muted);margin-left:4px;}
+.mode-hint b{color:var(--accent);}
+
+/* save/load bar */
+.savebar{background:#0d1117;border-bottom:1px solid var(--border);padding:5px 14px;display:flex;align-items:center;gap:8px;flex-shrink:0;}
+.savebar-label{font-family:'DM Mono',monospace;font-size:.65rem;color:var(--muted);}
+.save-slot{display:flex;align-items:center;gap:4px;}
+.slot-btn{font-family:'Barlow Condensed',sans-serif;font-weight:600;font-size:.72rem;letter-spacing:.04em;border:1px solid var(--border);background:transparent;color:var(--muted);border-radius:4px;cursor:pointer;padding:3px 8px;transition:all .15s;}
+.slot-btn:hover{border-color:var(--accent);color:var(--accent);}
+.slot-btn.has-data{border-color:#30363d;color:var(--text);background:#161b22;}
+.slot-name{font-size:.62rem;color:var(--muted);font-family:'DM Mono',monospace;max-width:90px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+#save-status{font-family:'DM Mono',monospace;font-size:.63rem;color:var(--green);margin-left:8px;opacity:0;transition:opacity .4s;}
+
+.main{display:flex;flex:1;overflow:hidden;}
+#map{flex:1;position:relative;}
+.leaflet-tile-pane{filter:brightness(.72) saturate(.75);}
+body.mode-route #map{cursor:crosshair;}
+body.mode-crowd #map{cursor:cell;}
+body.mode-posten #map{cursor:crosshair;}
+body.mode-none #map{cursor:default;}
+
+/* MAP LEGEND */
+.map-legend{position:absolute;bottom:24px;left:10px;z-index:1000;background:rgba(13,17,23,.92);border:1px solid #30363d;border-radius:8px;padding:10px 12px;min-width:200px;backdrop-filter:blur(4px);}
+.map-legend h4{font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:.75rem;letter-spacing:.1em;color:var(--accent);text-transform:uppercase;margin-bottom:8px;border-bottom:1px solid #30363d;padding-bottom:5px;}
+.legend-section{margin-bottom:8px;}
+.legend-section-title{font-size:.62rem;color:var(--muted);letter-spacing:.08em;text-transform:uppercase;font-family:'Barlow Condensed',sans-serif;font-weight:600;margin-bottom:4px;}
+.legend-row{display:flex;align-items:center;gap:7px;margin-bottom:3px;font-size:.71rem;}
+.legend-circle{width:18px;height:18px;border-radius:50%;border:2px solid;flex-shrink:0;display:flex;align-items:center;justify-content:center;}
+.legend-line{width:22px;height:4px;border-radius:2px;flex-shrink:0;}
+.legend-dot{width:9px;height:9px;border-radius:50%;flex-shrink:0;}
+.legend-text{color:var(--text);line-height:1.3;}
+.legend-sub{color:var(--muted);font-size:.62rem;display:block;}
+
+.sidebar{width:292px;background:var(--panel);border-left:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden;flex-shrink:0;}
+.sidebar-tabs{display:flex;border-bottom:1px solid var(--border);flex-shrink:0;}
+.tab{flex:1;padding:7px 2px;text-align:center;font-family:'Barlow Condensed',sans-serif;font-weight:600;font-size:.68rem;letter-spacing:.08em;color:var(--muted);cursor:pointer;border-bottom:2px solid transparent;transition:all .15s;}
+.tab.active{color:var(--accent);border-bottom-color:var(--accent);}
+.tab-content{display:none;flex:1;overflow-y:auto;padding:10px;flex-direction:column;gap:8px;}
+.tab-content.active{display:flex;}
+
+.section-label{font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:.64rem;letter-spacing:.14em;color:var(--muted);text-transform:uppercase;margin-bottom:2px;}
+.hint{font-size:.72rem;color:var(--muted);background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:7px 9px;line-height:1.5;}
+.hint b{color:var(--accent);}
+
+button{font-family:'Barlow Condensed',sans-serif;font-weight:600;font-size:.82rem;letter-spacing:.05em;border:none;border-radius:5px;cursor:pointer;padding:6px 11px;transition:all .15s;}
 .btn-primary{background:var(--accent);color:#0d1117;}.btn-primary:hover{background:#f0ca6a;}
 .btn-ghost{background:transparent;color:var(--muted);border:1px solid var(--border);}.btn-ghost:hover{color:var(--text);border-color:var(--text);}
 .btn-green{background:var(--green);color:#0d1117;}.btn-green:hover{background:#4ade80;}
 .btn-danger{background:transparent;color:var(--red);border:1px solid var(--red);}.btn-danger:hover{background:var(--red);color:#fff;}
-.main{display:flex;flex:1;overflow:hidden;}
-#map{flex:1;cursor:crosshair;}
-.leaflet-tile-pane{filter:brightness(.72) saturate(.75);}
-.sidebar{width:300px;background:var(--panel);border-left:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden;flex-shrink:0;}
-.sidebar-tabs{display:flex;border-bottom:1px solid var(--border);flex-shrink:0;}
-.tab{flex:1;padding:8px 2px;text-align:center;font-family:'Barlow Condensed',sans-serif;font-weight:600;font-size:.73rem;letter-spacing:.08em;color:var(--muted);cursor:pointer;border-bottom:2px solid transparent;transition:all .15s;}
-.tab.active{color:var(--accent);border-bottom-color:var(--accent);}
-.tab-content{display:none;flex:1;overflow-y:auto;padding:11px;flex-direction:column;gap:9px;}
-.tab-content.active{display:flex;}
-.section-label{font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:.67rem;letter-spacing:.14em;color:var(--muted);text-transform:uppercase;margin-bottom:3px;}
-.hint{font-size:.75rem;color:var(--muted);background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:8px 9px;line-height:1.5;}
-.hint b{color:var(--accent);}
-.posten-item{background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:7px 9px;display:flex;align-items:center;gap:7px;font-size:.79rem;}
+.btn-sm{padding:4px 9px;font-size:.74rem;}
+
+.posten-item{background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:6px 8px;display:flex;align-items:center;gap:6px;font-size:.77rem;}
 .posten-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0;border:2px solid #fff2;}
 .posten-name{flex:1;font-weight:500;}
-.posten-coords{font-family:'DM Mono',monospace;font-size:.62rem;color:var(--muted);}
-.posten-delete{background:none;border:none;color:var(--muted);cursor:pointer;padding:2px 4px;font-size:.9rem;transition:color .1s;}
+.posten-coords{font-family:'DM Mono',monospace;font-size:.6rem;color:var(--muted);}
+.posten-delete{background:none;border:none;color:var(--muted);cursor:pointer;padding:2px 4px;font-size:.88rem;transition:color .1s;}
 .posten-delete:hover{color:var(--red);}
-.metric-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;}
-.metric-box{background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:8px 6px;text-align:center;}
-.metric-val{font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:1.4rem;color:var(--accent);line-height:1;}
-.metric-label{font-size:.63rem;color:var(--muted);margin-top:2px;}
+
+.metric-grid{display:grid;grid-template-columns:1fr 1fr;gap:5px;}
+.metric-box{background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:7px 5px;text-align:center;}
+.metric-val{font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:1.35rem;color:var(--accent);line-height:1;}
+.metric-label{font-size:.6rem;color:var(--muted);margin-top:2px;}
+
 .cov-bar-wrap{margin:2px 0;}
-.cov-label{font-size:.75rem;margin-bottom:3px;display:flex;justify-content:space-between;}
+.cov-label{font-size:.72rem;margin-bottom:3px;display:flex;justify-content:space-between;}
 .cov-bar{height:6px;background:var(--border);border-radius:4px;overflow:hidden;}
 .cov-fill{height:100%;border-radius:4px;transition:width .5s,background .3s;}
-.alert{font-size:.73rem;border-radius:5px;padding:7px 9px;line-height:1.45;}
+
+.alert{font-size:.7rem;border-radius:5px;padding:6px 8px;line-height:1.4;}
 .alert-warn{background:#2d1f0a;border:1px solid #7c5a1a;color:#f0ca6a;}
 .alert-ok{background:#0a1f0f;border:1px solid #1a7c30;color:#86efac;}
 .alert-info{background:#0d1f2d;border:1px solid #1a4a7c;color:#93c5fd;}
 .alert-bad{background:#1f0a0a;border:1px solid #7c1a1a;color:#fca5a5;}
-textarea.export-box{background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);font-family:'DM Mono',monospace;font-size:.64rem;padding:7px;resize:vertical;min-height:110px;width:100%;}
-input[type="password"]{width:100%;background:var(--bg);border:1px solid var(--border);border-radius:5px;color:var(--text);font-family:'DM Mono',monospace;font-size:.73rem;padding:6px 8px;}
-input:focus{outline:none;border-color:var(--accent);}
-select{width:100%;background:var(--bg);border:1px solid var(--border);border-radius:5px;color:var(--text);font-family:'Barlow',sans-serif;font-size:.77rem;padding:6px 8px;}
-select:focus{outline:none;border-color:var(--accent);}
-label{font-size:.73rem;color:var(--muted);margin-bottom:3px;display:block;}
-.small-note{font-size:.68rem;color:var(--muted);margin-top:4px;line-height:1.4;}
+
+.crowd-zone-btns{display:grid;grid-template-columns:1fr 1fr;gap:5px;}
+.zone-btn{padding:7px 6px;font-size:.7rem;border:2px solid transparent;border-radius:6px;cursor:pointer;font-family:'Barlow Condensed',sans-serif;font-weight:700;letter-spacing:.04em;transition:all .15s;text-align:center;background:transparent;}
+.zone-btn.selected{filter:brightness(1.2);transform:scale(1.03);}
+
+.crowd-seg-list{display:flex;flex-direction:column;gap:4px;max-height:180px;overflow-y:auto;}
+.crowd-seg-item{display:flex;align-items:center;gap:6px;background:var(--bg);border:1px solid var(--border);border-radius:5px;padding:4px 7px;font-size:.7rem;}
+.crowd-seg-swatch{width:9px;height:9px;border-radius:2px;flex-shrink:0;}
+.crowd-seg-name{flex:1;color:var(--muted);}
+
+.route-stats{font-family:'DM Mono',monospace;font-size:.67rem;color:var(--muted);background:var(--bg);border:1px solid var(--border);border-radius:5px;padding:6px 8px;line-height:1.8;}
+.route-stats b{color:var(--accent);}
+
+.cf-row{display:flex;align-items:center;gap:7px;background:var(--bg);border:1px solid var(--border);border-radius:5px;padding:5px 7px;margin-bottom:3px;}
+.cf-dot{width:9px;height:9px;border-radius:50%;flex-shrink:0;}
+.cf-label{font-size:.7rem;flex:1;}
+.cf-val{font-family:'DM Mono',monospace;font-size:.64rem;color:var(--accent);width:55px;text-align:right;line-height:1.4;}
+.cf-row input[type=range]{flex:1;accent-color:var(--accent);}
+
+textarea.export-box{background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);font-family:'DM Mono',monospace;font-size:.61rem;padding:6px;resize:vertical;min-height:100px;width:100%;}
+input[type="password"],select{width:100%;background:var(--bg);border:1px solid var(--border);border-radius:5px;color:var(--text);padding:5px 7px;}
+input[type="password"]{font-family:'DM Mono',monospace;font-size:.7rem;}
+select{font-family:'Barlow',sans-serif;font-size:.74rem;}
+input:focus,select:focus{outline:none;border-color:var(--accent);}
+label{font-size:.7rem;color:var(--muted);margin-bottom:2px;display:block;}
+.small-note{font-size:.65rem;color:var(--muted);margin-top:3px;line-height:1.4;}
 .small-note a{color:var(--accent);}
-
-/* Crowd legend */
-.crowd-legend{display:grid;grid-template-columns:1fr 1fr;gap:5px;font-size:.7rem;}
-.crowd-item{display:flex;align-items:center;gap:6px;background:var(--bg);border:1px solid var(--border);border-radius:5px;padding:5px 7px;}
-.crowd-swatch{width:12px;height:12px;border-radius:3px;flex-shrink:0;}
-
-/* Crowd slider row */
-.crowd-row{display:flex;flex-direction:column;gap:3px;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:8px;}
-.crowd-row-title{font-size:.73rem;font-weight:500;}
-.crowd-row-sub{font-size:.65rem;color:var(--muted);}
-.crowd-row-ctrl{display:flex;align-items:center;gap:8px;margin-top:4px;}
-.crowd-row-ctrl input[type=range]{flex:1;accent-color:var(--accent);}
-.crowd-badge{font-family:'DM Mono',monospace;font-size:.68rem;padding:2px 6px;border-radius:3px;white-space:nowrap;}
-
-.waypoint-list{font-family:'DM Mono',monospace;font-size:.63rem;color:var(--muted);background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:7px 9px;line-height:1.9;}
-.waypoint-list .wl-key{color:var(--accent);font-weight:500;}
 </style>
 </head>
-<body>
+<body class="mode-none">
+
 <header>
-  <div class="logo">SANDI·PLANER <span>Emder Matjeslauf 2026 · Crowd-korrigiertes Schutzziel</span></div>
-  <div class="badge">Schutzziel <b>3 min</b> effektiv</div>
-  <div class="badge">Rundkurs <b>~2,5 km</b> · 4× = 10 km</div>
+  <div class="logo">SANDI·PLANER <span>Emder Matjeslauf 2026 · Crowd-korrigiertes Schutzziel 3 min</span></div>
+  <div class="badge" id="badge-pts">Streckenpunkte <b>0</b></div>
   <div class="badge" id="badge-posten">Posten <b>0</b></div>
   <div class="badge" id="badge-cov">Coverage <b>—</b></div>
   <div class="header-actions">
-    <button class="btn-danger" onclick="clearAll()">✕ Reset</button>
-    <button class="btn-primary" onclick="switchTab('export')">⤓ Export</button>
+    <button class="btn-danger btn-sm" onclick="clearAll()">✕ Alles reset</button>
+    <button class="btn-primary btn-sm" onclick="switchTab('export')">⤓ Export</button>
   </div>
 </header>
 
+<!-- MODE BAR -->
+<div class="modebar">
+  <button class="mode-btn" id="mbtn-route"  onclick="setMode('route')">✏ Strecke zeichnen</button>
+  <button class="mode-btn" id="mbtn-crowd"  onclick="setMode('crowd')">🎨 Crowd-Zone</button>
+  <button class="mode-btn" id="mbtn-posten" onclick="setMode('posten')">➕ Posten setzen</button>
+  <button class="mode-btn" id="mbtn-none"   onclick="setMode('none')">🖐 Pan</button>
+  <div class="mode-sep"></div>
+  <button class="mode-btn btn-sm" onclick="undoRoutePoint()" style="border-color:#555;">↩ Undo</button>
+  <button class="mode-btn btn-sm" onclick="finishRoute()" style="border-color:var(--green);color:var(--green);">✓ Strecke fertig</button>
+  <span class="mode-hint" id="mode-hint">← Modus wählen</span>
+</div>
+
+<!-- SAVE BAR -->
+<div class="savebar">
+  <span class="savebar-label">💾 SPEICHERSLOTS:</span>
+  <div class="save-slot" id="slot-A">
+    <button class="slot-btn" id="slotbtn-A" onclick="saveSlot('A')">Speichern A</button>
+    <button class="slot-btn" id="loadbtn-A" onclick="loadSlot('A')" style="display:none;">Laden A</button>
+    <span class="slot-name" id="slotname-A"></span>
+    <button class="slot-btn" id="delbtn-A" onclick="deleteSlot('A')" style="display:none;color:var(--red);border-color:var(--red);">✕</button>
+  </div>
+  <div class="mode-sep"></div>
+  <div class="save-slot" id="slot-B">
+    <button class="slot-btn" id="slotbtn-B" onclick="saveSlot('B')">Speichern B</button>
+    <button class="slot-btn" id="loadbtn-B" onclick="loadSlot('B')" style="display:none;">Laden B</button>
+    <span class="slot-name" id="slotname-B"></span>
+    <button class="slot-btn" id="delbtn-B" onclick="deleteSlot('B')" style="display:none;color:var(--red);border-color:var(--red);">✕</button>
+  </div>
+  <div class="mode-sep"></div>
+  <div class="save-slot" id="slot-C">
+    <button class="slot-btn" id="slotbtn-C" onclick="saveSlot('C')">Speichern C</button>
+    <button class="slot-btn" id="loadbtn-C" onclick="loadSlot('C')" style="display:none;">Laden C</button>
+    <span class="slot-name" id="slotname-C"></span>
+    <button class="slot-btn" id="delbtn-C" onclick="deleteSlot('C')" style="display:none;color:var(--red);border-color:var(--red);">✕</button>
+  </div>
+  <span id="save-status">✓ gespeichert</span>
+</div>
+
 <div class="main">
-  <div id="map"></div>
+  <div id="map">
+    <!-- MAP LEGEND (absolute, über Leaflet) -->
+    <div class="map-legend" id="map-legend">
+      <h4>Legende</h4>
+
+      <div class="legend-section">
+        <div class="legend-section-title">Isochronen um Posten</div>
+        <div class="legend-row">
+          <div class="legend-circle" style="border-color:#22c55e;background:#22c55e20;width:24px;height:24px;"></div>
+          <div class="legend-text">
+            <b>Frei</b> — voller Radius
+            <span class="legend-sub" id="leg-free-r">~240 m</span>
+          </div>
+        </div>
+        <div class="legend-row">
+          <div class="legend-circle" style="border-color:#facc15;background:#facc1518;width:19px;height:19px;"></div>
+          <div class="legend-text">
+            <b>Erhöht</b> — leicht reduziert
+            <span class="legend-sub" id="leg-elev-r">~192 m</span>
+          </div>
+        </div>
+        <div class="legend-row">
+          <div class="legend-circle" style="border-color:#f97316;background:#f9731618;width:15px;height:15px;"></div>
+          <div class="legend-text">
+            <b>Moderat</b> — reduziert
+            <span class="legend-sub" id="leg-mod-r">~168 m</span>
+          </div>
+        </div>
+        <div class="legend-row">
+          <div class="legend-circle" style="border-color:#ef4444;background:#ef444418;width:11px;height:11px;border-style:dashed;"></div>
+          <div class="legend-text">
+            <b>Dicht</b> — stark reduziert
+            <span class="legend-sub" id="leg-dense-r">~108 m</span>
+          </div>
+        </div>
+        <div style="font-size:.61rem;color:var(--muted);margin-top:4px;line-height:1.4;">
+          Jeder Kreis = effektiver 3-min-Fußweg<br>bei jeweiliger Menschendichte
+        </div>
+      </div>
+
+      <div class="legend-section">
+        <div class="legend-section-title">Streckenfarbe = Crowd-Zone</div>
+        <div class="legend-row">
+          <div class="legend-line" style="background:#ef4444;"></div>
+          <div class="legend-text">🔴 Dicht (Faldernstr./Rathausplatz)</div>
+        </div>
+        <div class="legend-row">
+          <div class="legend-line" style="background:#f97316;"></div>
+          <div class="legend-text">🟠 Moderat (Osterstr./Nordertorstr.)</div>
+        </div>
+        <div class="legend-row">
+          <div class="legend-line" style="background:#facc15;"></div>
+          <div class="legend-text">🟡 Erhöht (Bollwerkstr./Spielmarke)</div>
+        </div>
+        <div class="legend-row">
+          <div class="legend-line" style="background:#22c55e;"></div>
+          <div class="legend-text">🟢 Frei (Petkumer/F-E-Str.)</div>
+        </div>
+      </div>
+
+      <div class="legend-section" style="margin-bottom:0">
+        <div class="legend-section-title">Coverage-Punkte</div>
+        <div class="legend-row">
+          <div class="legend-dot" style="background:#22c55e;"></div>
+          <div class="legend-text">Im Schutzziel ✓</div>
+        </div>
+        <div class="legend-row">
+          <div class="legend-dot" style="background:#ef4444;"></div>
+          <div class="legend-text">Außerhalb — Lücke ✗</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <div class="sidebar">
     <div class="sidebar-tabs">
-      <div class="tab active" onclick="switchTab('posten')" id="tab-posten">POSTEN</div>
+      <div class="tab active" onclick="switchTab('strecke')" id="tab-strecke">STRECKE</div>
       <div class="tab" onclick="switchTab('crowd')" id="tab-crowd">CROWD</div>
+      <div class="tab" onclick="switchTab('posten')" id="tab-posten">POSTEN</div>
       <div class="tab" onclick="switchTab('analyse')" id="tab-analyse">ANALYSE</div>
-      <div class="tab" onclick="switchTab('setup')" id="tab-setup">SETUP</div>
       <div class="tab" onclick="switchTab('export')" id="tab-export">EXPORT</div>
     </div>
 
-    <!-- POSTEN -->
-    <div class="tab-content active" id="content-posten">
-      <div class="hint"><b>→ Klick auf Karte</b> setzt Sanitätsposten.<br>Effektive Isochrone berücksichtigt Crowd-Delay pro Streckenabschnitt.</div>
-      <div>
-        <div class="section-label">Streckenführung 2026</div>
-        <div class="waypoint-list">
-          <span class="wl-key">START</span> Faldernbrücke<br>
-          → Rathausplatz<br>→ Neutorstraße<br>→ Osterstraße<br>→ Spielmarke<br>
-          → Bollwerkstraße ↑<br>→ Nordertorstraße<br>→ Max-Windmüller-Str.<br>
-          → Am Lindengraben<br>→ Osterstraße<br>→ Nordertorstraße<br>
-          → Brückstraße<br>→ Friedrich-Ebert-Str.<br>→ Petkumer Str.<br>
-          → Martin-Faber-Str.<br>→ An der Bonnesse<br>→ Faldernstraße<br>
-          <span class="wl-key">ZIEL</span> Rathausplatz
-        </div>
+    <!-- STRECKE -->
+    <div class="tab-content active" id="content-strecke">
+      <div class="hint">
+        <b>1.</b> „✏ Strecke zeichnen" → Punkt für Punkt klicken.<br>
+        <b>2.</b> „✓ Strecke fertig" wenn Runde komplett.<br>
+        <b>3.</b> Crowd-Zonen und Posten setzen.
       </div>
-      <div>
-        <div class="section-label">Gesetzte Posten</div>
-        <div id="posten-list"><div style="color:var(--muted);font-size:.76rem;">Noch keine Posten gesetzt.</div></div>
+      <div class="route-stats" id="route-stats">
+        Punkte: <b>0</b><br>Länge: <b>0 m</b><br>Status: <b style="color:var(--muted)">Nicht begonnen</b>
       </div>
-      <div>
-        <div class="section-label">Lücken im Schutzziel</div>
-        <div id="uncovered-info" style="color:var(--muted);font-size:.76rem;">Noch keine Analyse.</div>
+      <div style="display:flex;gap:6px;">
+        <button class="btn-ghost btn-sm" onclick="undoRoutePoint()" style="flex:1">↩ Letzten Punkt</button>
+        <button class="btn-danger btn-sm" onclick="clearRoute()" style="flex:1">✕ Neu</button>
       </div>
+      <div class="alert alert-info">Start: Faldernbrücke. Zoom erst in die Emder Innenstadt, dann zeichnen.</div>
     </div>
 
     <!-- CROWD -->
     <div class="tab-content" id="content-crowd">
-      <div class="hint">
-        Crowd-Delay reduziert das effektive Gehtempo und damit den erreichbaren Radius in 3 min.
-        <b>Dichtgedrängt</b> (Faldernstr./Rathausplatz/Neutorstr.) = stärker eingeschränkt.<br><br>
-        Die farbige Strecke auf der Karte zeigt die Crowd-Stufen live an.
+      <div class="hint">Zone wählen → nächsten Streckenpunkt anklicken. Oder per Dropdown unten.</div>
+      <div>
+        <div class="section-label">Aktive Zone</div>
+        <div class="crowd-zone-btns" id="zone-btns">
+          <div class="zone-btn selected" data-zone="dense" onclick="selectZone('dense')" style="border-color:#ef4444;color:#ef4444;">🔴 DICHT<br><small>Faldernstr./Rathauspl.</small></div>
+          <div class="zone-btn" data-zone="moderate" onclick="selectZone('moderate')" style="border-color:#f97316;color:#f97316;">🟠 MODERAT<br><small>Osterstr./Nordertorstr.</small></div>
+          <div class="zone-btn" data-zone="elevated" onclick="selectZone('elevated')" style="border-color:#facc15;color:#facc15;">🟡 ERHÖHT<br><small>Bollwerkstr./Spielmarke</small></div>
+          <div class="zone-btn" data-zone="free" onclick="selectZone('free')" style="border-color:#22c55e;color:#22c55e;">🟢 FREI<br><small>Petkumer/FE-Str.</small></div>
+        </div>
       </div>
-      <div class="crowd-legend">
-        <div class="crowd-item"><div class="crowd-swatch" style="background:#ef4444"></div><span><b>Dicht</b> — stark reduziert</span></div>
-        <div class="crowd-item"><div class="crowd-swatch" style="background:#f97316"></div><span><b>Moderat</b> — reduziert</span></div>
-        <div class="crowd-item"><div class="crowd-swatch" style="background:#facc15"></div><span><b>Erhöht</b> — leicht red.</span></div>
-        <div class="crowd-item"><div class="crowd-swatch" style="background:#22c55e"></div><span><b>Frei</b> — kein Delay</span></div>
+      <div>
+        <div class="section-label">Crowd-Faktoren (Gehtempo × Faktor = effekt. Radius)</div>
+        <div id="crowd-factors"></div>
       </div>
-      <div id="crowd-sliders"></div>
-      <div style="font-size:.7rem;color:var(--muted);line-height:1.5;margin-top:2px;">
-        Effektiver Radius = Basisradius × Crowd-Faktor.<br>
-        Bsp.: 240 m × 0,5 = <b>120 m</b> bei dichtem Gedränge.<br>
-        Isochronen und Coverage-Prüfung passen sich sofort an.
+      <div>
+        <div class="section-label">Punkte &amp; Zonen</div>
+        <div class="crowd-seg-list" id="crowd-seg-list"><div style="color:var(--muted);font-size:.7rem;">Erst Strecke zeichnen.</div></div>
+      </div>
+    </div>
+
+    <!-- POSTEN -->
+    <div class="tab-content" id="content-posten">
+      <div class="hint">„➕ Posten setzen" → Klick auf Karte.<br>Vier Kreise = 3-min-Radius für jede Crowd-Stufe.</div>
+      <div>
+        <div class="section-label">Sanitätsposten</div>
+        <div id="posten-list"><div style="color:var(--muted);font-size:.74rem;">Noch keine Posten.</div></div>
+      </div>
+      <div>
+        <div class="section-label">Lücken im Schutzziel</div>
+        <div id="uncovered-info" style="color:var(--muted);font-size:.73rem;">Noch keine Analyse.</div>
       </div>
     </div>
 
     <!-- ANALYSE -->
     <div class="tab-content" id="content-analyse">
-      <div class="section-label">Kennzahlen</div>
       <div class="metric-grid">
         <div class="metric-box"><div class="metric-val" id="m-posten">0</div><div class="metric-label">Posten</div></div>
         <div class="metric-box"><div class="metric-val" id="m-cov">—</div><div class="metric-label">Coverage</div></div>
@@ -167,43 +330,7 @@ label{font-size:.73rem;color:var(--muted);margin-bottom:3px;display:block;}
         <div class="cov-label"><span>Streckenabdeckung</span><span id="cov-pct">0 %</span></div>
         <div class="cov-bar"><div class="cov-fill" id="cov-fill" style="width:0%;background:var(--red)"></div></div>
       </div>
-      <div id="analyse-status"><div class="alert alert-info">ℹ Posten setzen für Analyse.</div></div>
-      <div>
-        <div class="section-label">Planungshinweis</div>
-        <div style="font-size:.74rem;color:var(--muted);line-height:1.5;">
-          Mit Crowd-Korrektur auf dichten Abschnitten verkleinert sich der effektive Radius erheblich.
-          Auf Faldernstr./Rathausplatz/Neutorstr. sind engere Posten-Abstände nötig.
-          Typisch: <b style="color:var(--accent)">6–9 Posten</b> für vollständige Abdeckung.
-        </div>
-      </div>
-    </div>
-
-    <!-- SETUP -->
-    <div class="tab-content" id="content-setup">
-      <div>
-        <div class="section-label">OpenRouteService API-Key</div>
-        <label>Mit Key: echte Fußweg-Isochrone. Ohne: Kreisapproximation (Crowd-korrigiert).</label>
-        <input type="password" id="ors-key" placeholder="ORS API Key…" oninput="saveKey()"/>
-        <div class="small-note">Kostenlos: <a href="https://openrouteservice.org/dev/#/signup" target="_blank">openrouteservice.org</a></div>
-      </div>
-      <div>
-        <div class="section-label">Basis-Gehtempo (ungehindert)</div>
-        <select id="walk-speed" onchange="updateRadiusHint(); recomputeAll()">
-          <option value="60">60 m/min — normales Gehen</option>
-          <option value="80" selected>80 m/min — zügig mit Tasche</option>
-          <option value="100">100 m/min — forscher Schritt</option>
-        </select>
-        <div class="small-note" id="radius-hint">→ Freier Radius: <b>240 m</b></div>
-      </div>
-      <div>
-        <div class="section-label">Streckenauflösung</div>
-        <select id="resolution">
-          <option value="15">Grob — 15 m</option>
-          <option value="8" selected>Mittel — 8 m</option>
-          <option value="4">Fein — 4 m</option>
-        </select>
-      </div>
-      <div class="alert alert-warn">⚠ Streckenkoordinaten aus GPS-Rekonstruktion. Vor Einsatz mit aktuellem Streckenplan Emder LG abgleichen!</div>
+      <div id="analyse-status"><div class="alert alert-info">ℹ Strecke zeichnen und Posten setzen.</div></div>
     </div>
 
     <!-- EXPORT -->
@@ -211,555 +338,515 @@ label{font-size:.73rem;color:var(--muted);margin-bottom:3px;display:block;}
       <div>
         <div class="section-label">Einsatzplan (Text)</div>
         <textarea class="export-box" id="export-text" readonly></textarea>
-        <button class="btn-primary" onclick="copyText()" style="width:100%;margin-top:5px;">⎘ Kopieren</button>
+        <button class="btn-primary" onclick="copyText()" style="width:100%;margin-top:4px;">⎘ Kopieren</button>
       </div>
       <div>
-        <div class="section-label">GeoJSON (OsmAnd / QGIS / Locus)</div>
+        <div class="section-label">GeoJSON</div>
         <textarea class="export-box" id="export-json" readonly></textarea>
-        <button class="btn-ghost" onclick="copyJSON()" style="width:100%;margin-top:5px;">⎘ JSON kopieren</button>
+        <button class="btn-ghost" onclick="copyJSON()" style="width:100%;margin-top:4px;">⎘ JSON kopieren</button>
       </div>
-      <button class="btn-green" onclick="window.print()" style="width:100%;">🖨 Karte drucken / PDF</button>
+      <button class="btn-green" onclick="window.print()" style="width:100%;">🖨 Drucken / PDF</button>
     </div>
   </div>
 </div>
 
 <script>
-// ═══════════════════════════════════════════════════════
-// STRECKEN-SEGMENTE mit Crowd-Zonen
-// Jedes Segment hat: coords[], label, crowdZone
-// crowdZone: 'dense' | 'moderate' | 'elevated' | 'free'
-// ═══════════════════════════════════════════════════════
+// ════════════════════════════════════
+// CONFIG
+// ════════════════════════════════════
+const BASE_SPEED = 80;
+const TIME_MIN   = 3;
+const CROWD_COLORS = { dense:'#ef4444', moderate:'#f97316', elevated:'#facc15', free:'#22c55e' };
+const CROWD_LABELS = { dense:'Dicht', moderate:'Moderat', elevated:'Erhöht', free:'Frei' };
+const POSTEN_COLORS = ['#e8b84b','#60a5fa','#f472b6','#34d399','#fb923c','#a78bfa','#f87171','#2dd4bf','#facc15','#c084fc'];
 
-const SEGMENTS = [
-  {
-    label: 'Faldernbrücke → Rathausplatz',
-    crowdZone: 'dense',  // Start/Zielbereich, dichtgedrängt
-    coords: [
-      [53.3629, 7.2097],[53.3634, 7.2090],[53.3639, 7.2083],
-      [53.3644, 7.2077],[53.3649, 7.2071],
-    ]
-  },
-  {
-    label: 'Rathausplatz → Neutorstraße',
-    crowdZone: 'dense',  // Rathausplatz + Neutorstraße: dichtgedrängt
-    coords: [
-      [53.3649, 7.2071],[53.3654, 7.2067],[53.3659, 7.2063],
-      [53.3664, 7.2059],[53.3669, 7.2056],
-    ]
-  },
-  {
-    label: 'Neutorstraße → Osterstraße',
-    crowdZone: 'dense',  // noch Neutorstraße
-    coords: [
-      [53.3669, 7.2056],[53.3669, 7.2050],[53.3667, 7.2043],
-      [53.3663, 7.2037],[53.3659, 7.2031],
-    ]
-  },
-  {
-    label: 'Osterstraße → Spielmarke',
-    crowdZone: 'moderate', // Zuschauer, aber Bewegungsspielraum
-    coords: [
-      [53.3659, 7.2031],[53.3655, 7.2026],[53.3651, 7.2021],
-      [53.3647, 7.2017],
-    ]
-  },
-  {
-    label: 'Spielmarke → Bollwerkstraße',
-    crowdZone: 'elevated', // Ratsdelft-Bereich, Zuschauer
-    coords: [
-      [53.3647, 7.2017],[53.3643, 7.2018],[53.3638, 7.2022],
-      [53.3633, 7.2027],[53.3628, 7.2033],
-    ]
-  },
-  {
-    label: 'Bollwerkstraße → Nordertorstraße',
-    crowdZone: 'elevated',
-    coords: [
-      [53.3628, 7.2033],[53.3624, 7.2040],[53.3621, 7.2048],
-      [53.3617, 7.2056],
-    ]
-  },
-  {
-    label: 'Nordertorstraße → Max-Windmüller-Str.',
-    crowdZone: 'moderate',
-    coords: [
-      [53.3617, 7.2056],[53.3618, 7.2064],[53.3620, 7.2072],
-      [53.3622, 7.2079],
-    ]
-  },
-  {
-    label: 'Am Lindengraben',
-    crowdZone: 'elevated', // Weniger breit, Zuschauer stehen enger
-    coords: [
-      [53.3622, 7.2079],[53.3626, 7.2083],[53.3630, 7.2086],
-      [53.3635, 7.2085],
-    ]
-  },
-  {
-    label: 'Osterstraße (zurück)',
-    crowdZone: 'moderate',
-    coords: [
-      [53.3635, 7.2085],[53.3640, 7.2081],[53.3645, 7.2077],
-      [53.3650, 7.2073],
-    ]
-  },
-  {
-    label: 'Nordertorstraße (zurück) → Brückstraße',
-    crowdZone: 'moderate',
-    coords: [
-      [53.3650, 7.2073],[53.3655, 7.2070],[53.3660, 7.2073],
-      [53.3664, 7.2079],[53.3668, 7.2085],[53.3671, 7.2092],
-    ]
-  },
-  {
-    label: 'Friedrich-Ebert-Str.',
-    crowdZone: 'free', // weniger Zuschauer, breitere Straße
-    coords: [
-      [53.3671, 7.2092],[53.3674, 7.2098],[53.3677, 7.2100],
-      [53.3680, 7.2097],
-    ]
-  },
-  {
-    label: 'Petkumer Str.',
-    crowdZone: 'free',
-    coords: [
-      [53.3680, 7.2097],[53.3682, 7.2090],[53.3684, 7.2083],
-      [53.3682, 7.2075],
-    ]
-  },
-  {
-    label: 'Martin-Faber-Str. → An der Bonnesse',
-    crowdZone: 'elevated', // enger, aber Zuschauer
-    coords: [
-      [53.3682, 7.2075],[53.3679, 7.2068],[53.3675, 7.2062],
-      [53.3671, 7.2057],[53.3667, 7.2062],[53.3663, 7.2067],
-    ]
-  },
-  {
-    label: 'Faldernstraße → Rathausplatz (Ziel)',
-    crowdZone: 'dense',  // Zielbereich: dichtgedrängt
-    coords: [
-      [53.3663, 7.2067],[53.3657, 7.2073],[53.3652, 7.2076],
-      [53.3647, 7.2078],[53.3644, 7.2077],[53.3649, 7.2071],
-    ]
-  },
-];
+let crowdFactors = { dense:0.45, moderate:0.70, elevated:0.80, free:1.00 };
 
-// Crowd-Faktoren: Multiplikator auf Basis-Radius (1.0 = kein Delay)
-const CROWD_DEFAULTS = { dense: 0.45, moderate: 0.70, elevated: 0.80, free: 1.0 };
-const CROWD_COLORS   = { dense: '#ef4444', moderate: '#f97316', elevated: '#facc15', free: '#22c55e' };
-const CROWD_LABELS   = { dense: 'Dicht', moderate: 'Moderat', elevated: 'Erhöht', free: 'Frei' };
-
-// Aktuelle Faktoren (editierbar über Slider)
-let crowdFactors = { ...CROWD_DEFAULTS };
-
-// Alle Streckenkoordinaten zusammengeführt
-function getAllRouteCoords() {
-  const pts = [];
-  SEGMENTS.forEach((seg, si) => {
-    seg.coords.forEach((c, ci) => {
-      if (si > 0 && ci === 0) return; // Duplikat vermeiden
-      pts.push(c);
-    });
-  });
-  return pts;
-}
-
-// ════════════
+// ════════════════════════════════════
 // STATE
-// ════════════
-let map, routeLayerGroup, coverageLayer;
+// ════════════════════════════════════
+let map;
+let appMode = 'none';
+let routePoints   = [];
+let routeFinished = false;
+let routePolyline = null;
+let routeDotLayer = null;
+let routePreviewLine = null;
+let activeZone = 'dense';
 let posten = [];
-let checkPoints = []; // [{ll, crowdZone}]
+let coverageLayer = null;
+let checkPoints  = [];
 
-const COLORS = ['#e8b84b','#60a5fa','#f472b6','#34d399','#fb923c','#a78bfa','#f87171','#2dd4bf','#facc15','#c084fc'];
-
-// ════════════
+// ════════════════════════════════════
 // INIT
-// ════════════
+// ════════════════════════════════════
 function init() {
-  loadSettings();
-  buildCrowdSliders();
-
-  map = L.map('map', { center: [53.3653, 7.2062], zoom: 15 });
+  map = L.map('map', { center:[53.3653,7.2060], zoom:15 });
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    attribution: '© OpenStreetMap', maxZoom: 19
+    attribution:'© OpenStreetMap', maxZoom:19
   }).addTo(map);
 
-  drawRoute();
-  buildCheckPoints();
+  map.on('click',     onMapClick);
+  map.on('mousemove', onMapMouseMove);
+
+  buildCrowdFactorsUI();
+  updateLegendRadii();
+  updateRouteStats();
+  updateSlotUI();
   updateExport();
-  map.on('click', e => addPosten(e.latlng.lat, e.latlng.lng));
+
+  // Auto-load letzten Slot
+  const last = localStorage.getItem('sandi_last_slot');
+  if (last) {
+    const d = localStorage.getItem('sandi_slot_' + last);
+    if (d) { try { loadData(JSON.parse(d)); } catch(e){} }
+  }
 }
 
-// ════════════
-// ROUTE DRAWING (farbcodiert nach Crowd-Zone)
-// ════════════
-function drawRoute() {
-  if (routeLayerGroup) map.removeLayer(routeLayerGroup);
-  routeLayerGroup = L.layerGroup().addTo(map);
+// ════════════════════════════════════
+// MODE
+// ════════════════════════════════════
+const MODE_HINTS = {
+  route:  '<b>Klick</b> = Streckenpunkt · <b>↩</b> Undo · <b>✓ Fertig</b> wenn Runde komplett',
+  crowd:  '<b>Klick auf Streckenpunkt</b> = Zone zuweisen',
+  posten: '<b>Klick</b> = Sanitätsposten setzen',
+  none:   'Modus wählen →',
+};
+function setMode(m) {
+  appMode = m;
+  document.body.className = 'mode-' + m;
+  ['route','crowd','posten','none'].forEach(x =>
+    document.getElementById('mbtn-'+x).classList.toggle('active', x===m));
+  document.getElementById('mode-hint').innerHTML = MODE_HINTS[m];
+  if (m !== 'route' && routePreviewLine) { map.removeLayer(routePreviewLine); routePreviewLine=null; }
+  if (m === 'crowd')  switchTab('crowd');
+  if (m === 'posten') switchTab('posten');
+  if (m === 'route')  switchTab('strecke');
+}
 
-  SEGMENTS.forEach(seg => {
-    const color = CROWD_COLORS[seg.crowdZone];
-    L.polyline(seg.coords, {
-      color, weight: 6, opacity: 0.9, lineCap: 'round', lineJoin: 'round',
-    }).bindTooltip(
-      `<b>${seg.label}</b><br>Crowd: <span style="color:${color}">${CROWD_LABELS[seg.crowdZone]}</span><br>Faktor: ×${crowdFactors[seg.crowdZone].toFixed(2)}`,
-      { direction: 'top', sticky: true }
-    ).addTo(routeLayerGroup);
+// ════════════════════════════════════
+// MAP EVENTS
+// ════════════════════════════════════
+function onMapClick(e) {
+  if (appMode==='route')  addRoutePoint(e.latlng);
+  if (appMode==='crowd')  assignZoneToNearest(e.latlng);
+  if (appMode==='posten') addPosten(e.latlng.lat, e.latlng.lng);
+}
+function onMapMouseMove(e) {
+  if (appMode==='route' && routePoints.length>0 && !routeFinished) {
+    const last = routePoints[routePoints.length-1].ll;
+    if (routePreviewLine) map.removeLayer(routePreviewLine);
+    routePreviewLine = L.polyline([last,[e.latlng.lat,e.latlng.lng]],
+      {color:'#e8b84b',weight:2,opacity:.45,dashArray:'6 4'}).addTo(map);
+  }
+}
+
+// ════════════════════════════════════
+// ROUTE
+// ════════════════════════════════════
+function addRoutePoint(latlng) {
+  if (routeFinished) return;
+  routePoints.push({ ll:[latlng.lat,latlng.lng], zone:'free' });
+  redrawRoute(); updateRouteStats();
+}
+function undoRoutePoint() {
+  if (!routePoints.length) return;
+  routePoints.pop(); routeFinished=false;
+  redrawRoute(); updateRouteStats(); buildCheckPoints(); analyze();
+}
+function finishRoute() {
+  if (routePoints.length < 3) { alert('Mindestens 3 Punkte nötig.'); return; }
+  routeFinished = true;
+  if (routePreviewLine) { map.removeLayer(routePreviewLine); routePreviewLine=null; }
+  buildCheckPoints(); redrawRoute(); updateRouteStats(); updateCrowdSegList(); analyze();
+  setMode('crowd');
+}
+function clearRoute() {
+  routePoints=[]; routeFinished=false;
+  [routePolyline,routeDotLayer,routePreviewLine,coverageLayer].forEach(l=>{ if(l) map.removeLayer(l); });
+  routePolyline=routeDotLayer=routePreviewLine=coverageLayer=null;
+  checkPoints=[];
+  updateRouteStats(); updateCrowdSegList(); updateMetrics(null); updateExport();
+  document.getElementById('badge-pts').innerHTML='Streckenpunkte <b>0</b>';
+}
+
+function redrawRoute() {
+  if (routePolyline) map.removeLayer(routePolyline);
+  if (routeDotLayer) map.removeLayer(routeDotLayer);
+  if (routePoints.length===0) return;
+
+  routePolyline = L.layerGroup().addTo(map);
+  const pts = routeFinished ? [...routePoints, routePoints[0]] : routePoints;
+  for (let i=0;i<pts.length-1;i++) {
+    const zone=pts[i].zone, color=CROWD_COLORS[zone];
+    L.polyline([pts[i].ll,pts[i+1].ll],{color,weight:6,opacity:.9,lineCap:'round',lineJoin:'round'})
+      .bindTooltip(`Seg. ${i+1} · <b style="color:${color}">${CROWD_LABELS[zone]}</b>`,{sticky:true,direction:'top'})
+      .addTo(routePolyline);
+  }
+
+  routeDotLayer = L.layerGroup().addTo(map);
+  routePoints.forEach((pt,i)=>{
+    const isF=i===0, isL=i===routePoints.length-1;
+    const col=isF?'#22c55e':isL&&routeFinished?'#ef4444':'#e8b84b';
+    L.circleMarker(pt.ll,{radius:isF||isL?9:5,fillColor:col,color:'#fff',weight:1.5,fillOpacity:1})
+      .bindTooltip(`${isF?'START':isL&&routeFinished?'ENDE':'Pkt '+(i+1)} · ${CROWD_LABELS[pt.zone]}`,
+        {direction:'top',offset:[0,-8]}).addTo(routeDotLayer);
   });
+}
 
-  // Weiße Outline für bessere Lesbarkeit
-  SEGMENTS.forEach(seg => {
-    L.polyline(seg.coords, { color: '#fff', weight: 9, opacity: 0.15, lineCap: 'round' }).addTo(routeLayerGroup);
+function updateRouteStats() {
+  const n=routePoints.length;
+  let dist=0;
+  for(let i=0;i<n-1;i++) dist+=haversine(...routePoints[i].ll,...routePoints[i+1].ll);
+  const status=routeFinished?`<b style="color:var(--green)">Fertig ✓</b>`:
+    n>0?`<b style="color:var(--accent)">Wird gezeichnet (${n} Pkt.)</b>`:
+    `<b style="color:var(--muted)">Nicht begonnen</b>`;
+  document.getElementById('route-stats').innerHTML=
+    `Punkte: <b>${n}</b><br>Länge: <b>${dist>0?(dist/1000).toFixed(2)+' km':'0 m'}</b><br>Status: ${status}`;
+  document.getElementById('badge-pts').innerHTML=`Streckenpunkte <b>${n}</b>`;
+}
+
+// ════════════════════════════════════
+// CROWD
+// ════════════════════════════════════
+function selectZone(zone) {
+  activeZone=zone;
+  document.querySelectorAll('.zone-btn').forEach(b=>b.classList.toggle('selected',b.dataset.zone===zone));
+}
+function assignZoneToNearest(latlng) {
+  if (!routePoints.length) return;
+  let minD=Infinity, minI=0;
+  routePoints.forEach((pt,i)=>{ const d=haversine(latlng.lat,latlng.lng,...pt.ll); if(d<minD){minD=d;minI=i;} });
+  routePoints[minI].zone=activeZone;
+  redrawRoute(); buildCheckPoints(); updateCrowdSegList(); analyze();
+}
+function updateCrowdSegList() {
+  const el=document.getElementById('crowd-seg-list');
+  if (!routePoints.length) { el.innerHTML='<div style="color:var(--muted);font-size:.7rem;">Erst Strecke zeichnen.</div>'; return; }
+  el.innerHTML=routePoints.map((pt,i)=>`
+    <div class="crowd-seg-item">
+      <div class="crowd-seg-swatch" style="background:${CROWD_COLORS[pt.zone]}"></div>
+      <div class="crowd-seg-name">Pkt ${i+1}</div>
+      <select style="width:auto;font-size:.64rem;padding:2px 4px;" onchange="setPointZone(${i},this.value)">
+        ${['dense','moderate','elevated','free'].map(z=>`<option value="${z}"${z===pt.zone?' selected':''}>${CROWD_LABELS[z]}</option>`).join('')}
+      </select>
+    </div>`).join('');
+}
+function setPointZone(idx,zone) {
+  routePoints[idx].zone=zone; redrawRoute(); buildCheckPoints(); analyze();
+}
+
+// ════════════════════════════════════
+// CROWD FACTORS UI
+// ════════════════════════════════════
+function buildCrowdFactorsUI() {
+  const el=document.getElementById('crowd-factors');
+  el.innerHTML=['dense','moderate','elevated','free'].map(zone=>{
+    const f=crowdFactors[zone], r=Math.round(TIME_MIN*BASE_SPEED*f);
+    return `<div class="cf-row">
+      <div class="cf-dot" style="background:${CROWD_COLORS[zone]}"></div>
+      <div class="cf-label">${CROWD_LABELS[zone]}</div>
+      <input type="range" min="30" max="100" value="${Math.round(f*100)}" step="5"
+        ${zone==='free'?'disabled style="opacity:.4"':''}
+        oninput="setCrowdFactor('${zone}',this.value)"/>
+      <div class="cf-val" id="cf-val-${zone}">×${f.toFixed(2)}<br>${r} m</div>
+    </div>`;
+  }).join('');
+}
+function setCrowdFactor(zone,val) {
+  crowdFactors[zone]=parseInt(val)/100;
+  const r=Math.round(TIME_MIN*BASE_SPEED*crowdFactors[zone]);
+  document.getElementById(`cf-val-${zone}`).innerHTML=`×${crowdFactors[zone].toFixed(2)}<br>${r} m`;
+  posten.forEach(p=>{ Object.values(p.isoLayers).forEach(l=>map.removeLayer(l)); p.isoLayers={}; p.isoPolygons={}; drawIsochrones(p); });
+  redrawRoute(); updateLegendRadii(); analyze();
+}
+function updateLegendRadii() {
+  ['dense','moderate','elevated','free'].forEach(z=>{
+    const el=document.getElementById('leg-'+z.substring(0,4)+'-r') ||
+             document.getElementById('leg-'+{'dense':'dense','moderate':'mod','elevated':'elev','free':'free'}[z]+'-r');
+    if(el) el.textContent=`~${Math.round(TIME_MIN*BASE_SPEED*crowdFactors[z])} m effektiver Radius`;
   });
-
-  // Start/Ziel
-  const allCoords = getAllRouteCoords();
-  L.circleMarker(allCoords[0], { radius: 11, fillColor: '#22c55e', color: '#fff', weight: 2.5, fillOpacity: 1 })
-    .bindTooltip('<b>START: Faldernbrücke</b>', { direction: 'top' }).addTo(routeLayerGroup);
-  L.circleMarker(allCoords[allCoords.length-1], { radius: 11, fillColor: '#ef4444', color: '#fff', weight: 2.5, fillOpacity: 1 })
-    .bindTooltip('<b>ZIEL: Rathausplatz</b>', { direction: 'top' }).addTo(routeLayerGroup);
+  document.getElementById('leg-free-r').textContent=`~${Math.round(TIME_MIN*BASE_SPEED*crowdFactors.free)} m effektiver Radius`;
+  document.getElementById('leg-elev-r').textContent=`~${Math.round(TIME_MIN*BASE_SPEED*crowdFactors.elevated)} m effektiver Radius`;
+  document.getElementById('leg-mod-r').textContent=`~${Math.round(TIME_MIN*BASE_SPEED*crowdFactors.moderate)} m effektiver Radius`;
+  document.getElementById('leg-dense-r').textContent=`~${Math.round(TIME_MIN*BASE_SPEED*crowdFactors.dense)} m effektiver Radius`;
 }
 
-// ════════════
-// CHECK POINTS mit Crowd-Zone-Tag
-// ════════════
-function haversine(la, lo, lb, ob) {
-  const R = 6371000, f1 = la*Math.PI/180, f2 = lb*Math.PI/180;
-  const df = (lb-la)*Math.PI/180, dl = (ob-lo)*Math.PI/180;
-  const a = Math.sin(df/2)**2 + Math.cos(f1)*Math.cos(f2)*Math.sin(dl/2)**2;
-  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+// ════════════════════════════════════
+// CHECK POINTS
+// ════════════════════════════════════
+function haversine(la,lo,lb,ob) {
+  const R=6371000,f1=la*Math.PI/180,f2=lb*Math.PI/180,df=(lb-la)*Math.PI/180,dl=(ob-lo)*Math.PI/180;
+  const a=Math.sin(df/2)**2+Math.cos(f1)*Math.cos(f2)*Math.sin(dl/2)**2;
+  return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
 }
-
 function buildCheckPoints() {
-  const stepM = parseInt(document.getElementById('resolution').value);
-  checkPoints = [];
-  SEGMENTS.forEach(seg => {
-    for (let i = 0; i < seg.coords.length - 1; i++) {
-      const [la, lo] = seg.coords[i], [lb, ob] = seg.coords[i+1];
-      const n = Math.max(1, Math.ceil(haversine(la, lo, lb, ob) / stepM));
-      for (let s = 0; s < n; s++) {
-        const t = s / n;
-        checkPoints.push({ ll: [la + t*(lb-la), lo + t*(ob-lo)], zone: seg.crowdZone });
-      }
-    }
-    checkPoints.push({ ll: seg.coords[seg.coords.length-1], zone: seg.crowdZone });
-  });
+  checkPoints=[];
+  const stepM=8;
+  const pts=routeFinished?[...routePoints,routePoints[0]]:routePoints;
+  for(let i=0;i<pts.length-1;i++){
+    const[la,lo]=pts[i].ll,[lb,ob]=pts[i+1].ll,zone=pts[i].zone;
+    const n=Math.max(1,Math.ceil(haversine(la,lo,lb,ob)/stepM));
+    for(let s=0;s<n;s++){const t=s/n;checkPoints.push({ll:[la+t*(lb-la),lo+t*(ob-lo)],zone});}
+  }
 }
 
-// ════════════
+// ════════════════════════════════════
 // POSTEN
-// ════════════
-async function addPosten(lat, lng) {
-  const idx = posten.length;
-  const color = COLORS[idx % COLORS.length];
-  const name = `Posten ${idx + 1}`;
-  const marker = L.circleMarker([lat, lng], {
-    radius: 12, fillColor: color, color: '#fff', weight: 2.5, fillOpacity: 0.95, zIndexOffset: 1000
-  }).bindTooltip(`<b>${name}</b>`, { direction: 'top', offset: [0, -14] }).addTo(map);
-  const p = { lat, lng, name, color, marker, isoLayers: {}, isoPolygons: {} };
+// ════════════════════════════════════
+function addPosten(lat,lng) {
+  const idx=posten.length, color=POSTEN_COLORS[idx%POSTEN_COLORS.length], name=`Posten ${idx+1}`;
+  const marker=L.circleMarker([lat,lng],{radius:12,fillColor:color,color:'#fff',weight:2.5,fillOpacity:.95,zIndexOffset:1000})
+    .bindTooltip(`<b>${name}</b>`,{direction:'top',offset:[0,-14]}).addTo(map);
+  const p={lat,lng,name,color,marker,isoLayers:{},isoPolygons:{}};
   posten.push(p);
-  renderPostenList();
-  updateBadges();
-  await computeIsochrones(p);
-  analyze();
+  drawIsochrones(p);
+  renderPostenList(); updateBadges(); analyze();
 }
-
 function removePosten(idx) {
-  const p = posten[idx];
-  if (!p) return;
+  const p=posten[idx];if(!p)return;
   map.removeLayer(p.marker);
-  Object.values(p.isoLayers).forEach(l => map.removeLayer(l));
-  posten.splice(idx, 1);
-  posten.forEach((pp, i) => { pp.name = `Posten ${i+1}`; });
-  renderPostenList();
-  updateBadges();
-  analyze();
+  Object.values(p.isoLayers).forEach(l=>map.removeLayer(l));
+  posten.splice(idx,1);
+  posten.forEach((pp,i)=>{pp.name=`Posten ${i+1}`;});
+  renderPostenList(); updateBadges(); analyze();
 }
-
 function clearAll() {
-  posten.forEach(p => {
-    map.removeLayer(p.marker);
-    Object.values(p.isoLayers).forEach(l => map.removeLayer(l));
-  });
-  posten = [];
-  if (coverageLayer) { map.removeLayer(coverageLayer); coverageLayer = null; }
-  renderPostenList();
-  updateBadges();
-  updateMetrics(null);
-  updateExport();
+  clearRoute();
+  posten.forEach(p=>{map.removeLayer(p.marker);Object.values(p.isoLayers).forEach(l=>map.removeLayer(l));});
+  posten=[];
+  renderPostenList(); updateBadges(); updateMetrics(null); updateExport();
 }
-
 function renderPostenList() {
-  const el = document.getElementById('posten-list');
-  if (!posten.length) { el.innerHTML = '<div style="color:var(--muted);font-size:.76rem;">Noch keine Posten gesetzt.</div>'; return; }
-  el.innerHTML = posten.map((p, i) => `
+  const el=document.getElementById('posten-list');
+  if(!posten.length){el.innerHTML='<div style="color:var(--muted);font-size:.74rem;">Noch keine Posten.</div>';return;}
+  el.innerHTML=posten.map((p,i)=>`
     <div class="posten-item">
       <div class="posten-dot" style="background:${p.color}"></div>
-      <div style="flex:1">
-        <div class="posten-name">${p.name}</div>
-        <div class="posten-coords">${p.lat.toFixed(5)}, ${p.lng.toFixed(5)}</div>
-      </div>
+      <div style="flex:1"><div class="posten-name">${p.name}</div>
+      <div class="posten-coords">${p.lat.toFixed(5)}, ${p.lng.toFixed(5)}</div></div>
       <button class="posten-delete" onclick="removePosten(${i})">✕</button>
     </div>`).join('');
 }
 
-// ════════════
-// ISOCHRONEN — pro Crowd-Zone eine eigene (verschiedene Radien)
-// ════════════
-async function computeIsochrones(p) {
-  // Für jeden Zone-Typ eine Isochrone berechnen
-  const speed = parseInt(document.getElementById('walk-speed').value);
-  const key = document.getElementById('ors-key').value.trim();
-
-  // Entferne alte Layer
-  Object.values(p.isoLayers).forEach(l => map.removeLayer(l));
-  p.isoLayers = {};
-  p.isoPolygons = {};
-
-  const zones = Object.keys(crowdFactors);
-  for (const zone of zones) {
-    const radius = Math.round(3 * speed * crowdFactors[zone]);
-    const color = CROWD_COLORS[zone];
-    // Nur zeichnen wenn Faktor < 1 (bei free nur einmal)
-    if (zone !== 'free') {
-      const poly = circlePoints(p.lat, p.lng, radius, 48);
-      const layer = L.polygon(poly, {
-        fillColor: color, fillOpacity: 0.08,
-        color: color, weight: 1.5, opacity: 0.5,
-        dashArray: zone === 'dense' ? '4 3' : null,
-      }).addTo(map);
-      p.isoLayers[zone] = layer;
-      p.isoPolygons[zone] = poly;
-    }
-  }
-  // Freie Isochrone als Hauptkreis
-  const freeRadius = Math.round(3 * speed * crowdFactors['free']);
-  const freePoly = circlePoints(p.lat, p.lng, freeRadius, 60);
-  const freeLayer = L.polygon(freePoly, {
-    fillColor: p.color, fillOpacity: 0.13,
-    color: p.color, weight: 2, opacity: 0.7,
-  }).addTo(map);
-  p.isoLayers['free'] = freeLayer;
-  p.isoPolygons['free'] = freePoly;
+// ════════════════════════════════════
+// ISOCHRONEN (4 Kreise pro Posten)
+// ════════════════════════════════════
+function drawIsochrones(p) {
+  Object.values(p.isoLayers).forEach(l=>map.removeLayer(l));
+  p.isoLayers={}; p.isoPolygons={};
+  // Reihenfolge: größter zuerst (free), damit kleinere darüber liegen
+  ['free','elevated','moderate','dense'].forEach(zone=>{
+    const r=Math.round(TIME_MIN*BASE_SPEED*crowdFactors[zone]);
+    const color=CROWD_COLORS[zone];
+    const dash=zone==='dense'?'4 3':zone==='moderate'?'8 4':null;
+    const poly=circlePoints(p.lat,p.lng,r,56);
+    const layer=L.polygon(poly,{
+      fillColor:color, fillOpacity:zone==='free'?.11:.06,
+      color, weight:zone==='free'?2:1.5,
+      opacity:zone==='free'?.75:.55,
+      dashArray:dash,
+    }).bindTooltip(
+      `<b>${p.name}</b><br>${CROWD_LABELS[zone]}: ${r} m<br>3 min bei ×${crowdFactors[zone].toFixed(2)} Tempo`,
+      {sticky:true,direction:'top'}
+    ).addTo(map);
+    p.isoLayers[zone]=layer;
+    p.isoPolygons[zone]=poly;
+  });
 }
-
-function circlePoints(lat, lng, r, n) {
-  const pts = [];
-  for (let i = 0; i <= n; i++) {
-    const a = i/n * 2 * Math.PI;
-    pts.push([
-      lat + r/111320 * Math.cos(a),
-      lng + r/(111320*Math.cos(lat*Math.PI/180)) * Math.sin(a)
-    ]);
-  }
+function circlePoints(lat,lng,r,n){
+  const pts=[];
+  for(let i=0;i<=n;i++){const a=i/n*2*Math.PI;pts.push([lat+r/111320*Math.cos(a),lng+r/(111320*Math.cos(lat*Math.PI/180))*Math.sin(a)]);}
   return pts;
 }
 
-// ════════════
-// COVERAGE — checkt jeden Punkt mit zonenkorrektiertem Radius
-// ════════════
-function pip(pt, poly) {
-  let inside = false;
-  const [py, px] = pt;
-  for (let i = 0, j = poly.length-1; i < poly.length; j = i++) {
-    const [iy, ix] = poly[i], [jy, jx] = poly[j];
-    if (((iy > py) !== (jy > py)) && (px < (jx-ix)*(py-iy)/(jy-iy)+ix)) inside = !inside;
+// ════════════════════════════════════
+// COVERAGE
+// ════════════════════════════════════
+function pip(pt,poly){
+  let inside=false;const[py,px]=pt;
+  for(let i=0,j=poly.length-1;i<poly.length;j=i++){
+    const[iy,ix]=poly[i],[jy,jx]=poly[j];
+    if(((iy>py)!==(jy>py))&&(px<(jx-ix)*(py-iy)/(jy-iy)+ix))inside=!inside;
   }
   return inside;
 }
-
-function isCheckPointCovered(cp) {
-  // Ein Punkt auf Zone X ist gedeckt wenn mindestens ein Posten
-  // die für Zone X passende (kleinere) Isochrone über diesen Punkt hat
-  const zone = cp.zone;
-  return posten.some(p => {
-    const poly = p.isoPolygons[zone];
-    return poly && pip(cp.ll, poly);
+function analyze(){
+  if(coverageLayer){map.removeLayer(coverageLayer);coverageLayer=null;}
+  if(!posten.length||!checkPoints.length){updateMetrics(null);document.getElementById('uncovered-info').textContent='Noch keine Analyse.';updateExport();return;}
+  const ok=[],gap=[];
+  checkPoints.forEach(cp=>{
+    const covered=posten.some(p=>p.isoPolygons[cp.zone]&&pip(cp.ll,p.isoPolygons[cp.zone]));
+    (covered?ok:gap).push(cp);
   });
+  const pct=Math.round(ok.length/checkPoints.length*100);
+  const lg=L.layerGroup().addTo(map);
+  ok.forEach(cp=>L.circleMarker(cp.ll,{radius:3.5,fillColor:'#22c55e',color:'transparent',fillOpacity:.55}).addTo(lg));
+  gap.forEach(cp=>L.circleMarker(cp.ll,{radius:5,fillColor:CROWD_COLORS[cp.zone],color:'transparent',fillOpacity:.85}).addTo(lg));
+  coverageLayer=lg;
+  updateMetrics({pct,ok:ok.length,gap:gap.length});
+  document.getElementById('uncovered-info').innerHTML=gap.length===0
+    ?'<div class="alert alert-ok">✓ Schutzziel crowd-korrigiert vollständig erfüllt.</div>'
+    :`<div class="alert alert-warn">⚠ ${gap.length} Abschnitt${gap.length>1?'e':''} ungedeckt (Farbe = Crowd-Zone).</div>`;
+  updateExport({pct,gap:gap.length});
 }
-
-function analyze() {
-  if (coverageLayer) { map.removeLayer(coverageLayer); coverageLayer = null; }
-  if (!posten.length) {
-    updateMetrics(null);
-    document.getElementById('uncovered-info').textContent = 'Noch keine Analyse.';
-    updateExport();
+function updateMetrics(d){
+  document.getElementById('m-posten').textContent=posten.length;
+  if(!d){
+    ['m-cov','m-ok','m-gap'].forEach(id=>document.getElementById(id).textContent='—');
+    document.getElementById('cov-fill').style.width='0%';
+    document.getElementById('cov-pct').textContent='0 %';
+    document.getElementById('analyse-status').innerHTML='<div class="alert alert-info">ℹ Strecke zeichnen und Posten setzen.</div>';
     return;
   }
-
-  buildCheckPoints();
-  const ok = [], gap = [];
-  checkPoints.forEach(cp => (isCheckPointCovered(cp) ? ok : gap).push(cp));
-
-  const pct = Math.round(ok.length / checkPoints.length * 100);
-
-  const lg = L.layerGroup().addTo(map);
-  ok.forEach(cp => L.circleMarker(cp.ll, { radius: 3.5, fillColor: '#22c55e', color: 'transparent', fillOpacity: 0.55 }).addTo(lg));
-  gap.forEach(cp => L.circleMarker(cp.ll, { radius: 5, fillColor: CROWD_COLORS[cp.zone], color: 'transparent', fillOpacity: 0.85 }).addTo(lg));
-  coverageLayer = lg;
-
-  updateMetrics({ pct, ok: ok.length, gap: gap.length });
-  document.getElementById('uncovered-info').innerHTML = gap.length === 0
-    ? '<div class="alert alert-ok">✓ Schutzziel crowd-korrigiert vollständig erfüllt.</div>'
-    : `<div class="alert alert-warn">⚠ ${gap.length} Abschnitt${gap.length>1?'e':''} nicht gedeckt (Farbe = Crowd-Zone).</div>`;
-  updateExport({ pct, gap: gap.length });
-}
-
-// ════════════
-// CROWD SLIDERS
-// ════════════
-function buildCrowdSliders() {
-  const zones = ['dense','moderate','elevated','free'];
-  const descriptions = {
-    dense:    'Faldernstr. / Neutorstr. / Rathausplatz',
-    moderate: 'Osterstr. / Nordertorstr. / Brückstr.',
-    elevated: 'Spielmarke / Bollwerkstr. / Lindengraben / An der Bonnesse',
-    free:     'Friedrich-Ebert-Str. / Petkumer Str.',
-  };
-  const container = document.getElementById('crowd-sliders');
-  container.innerHTML = zones.map(zone => {
-    const f = crowdFactors[zone];
-    const pct = Math.round(f * 100);
-    const speed = parseInt(document.getElementById('walk-speed')?.value || 80);
-    const radius = Math.round(3 * speed * f);
-    return `
-    <div class="crowd-row" id="crowd-row-${zone}">
-      <div style="display:flex;align-items:center;gap:6px;">
-        <div style="width:10px;height:10px;border-radius:50%;background:${CROWD_COLORS[zone]};flex-shrink:0;"></div>
-        <div class="crowd-row-title">${CROWD_LABELS[zone]}</div>
-        <span class="crowd-badge" id="badge-${zone}" style="background:${CROWD_COLORS[zone]}22;color:${CROWD_COLORS[zone]};border:1px solid ${CROWD_COLORS[zone]}55;">
-          ×${f.toFixed(2)} · ${radius} m
-        </span>
-      </div>
-      <div class="crowd-row-sub">${descriptions[zone]}</div>
-      <div class="crowd-row-ctrl">
-        <span style="font-size:.65rem;color:var(--muted);">0.3</span>
-        <input type="range" min="30" max="100" value="${pct}" step="5"
-          oninput="onCrowdSlider('${zone}', this.value)"
-          ${zone === 'free' ? 'disabled style="opacity:0.4"' : ''}/>
-        <span style="font-size:.65rem;color:var(--muted);">1.0</span>
-      </div>
-    </div>`;
-  }).join('');
-}
-
-function onCrowdSlider(zone, val) {
-  crowdFactors[zone] = parseInt(val) / 100;
-  const speed = parseInt(document.getElementById('walk-speed').value);
-  const radius = Math.round(3 * speed * crowdFactors[zone]);
-  const f = crowdFactors[zone];
-  document.getElementById(`badge-${zone}`).textContent = `×${f.toFixed(2)} · ${radius} m`;
-  recomputeAll();
-}
-
-async function recomputeAll() {
-  updateRadiusHint();
-  // Isochronen aller Posten neu zeichnen
-  for (const p of posten) await computeIsochrones(p);
-  drawRoute(); // Tooltips mit neuen Faktoren
-  analyze();
-}
-
-// ════════════
-// HELPERS
-// ════════════
-function updateBadges() {
-  document.getElementById('badge-posten').innerHTML = `Posten <b>${posten.length}</b>`;
-  document.getElementById('badge-cov').innerHTML = `Coverage <b>${document.getElementById('m-cov').textContent}</b>`;
-}
-
-function updateMetrics(d) {
-  document.getElementById('m-posten').textContent = posten.length;
-  if (!d) {
-    ['m-cov','m-ok','m-gap'].forEach(id => document.getElementById(id).textContent = '—');
-    document.getElementById('cov-fill').style.width = '0%';
-    document.getElementById('cov-pct').textContent = '0 %';
-    document.getElementById('analyse-status').innerHTML = '<div class="alert alert-info">ℹ Posten setzen für Analyse.</div>';
-    return;
-  }
-  document.getElementById('m-cov').textContent = d.pct + '%';
-  document.getElementById('m-ok').textContent = d.ok;
-  document.getElementById('m-gap').textContent = d.gap;
-  document.getElementById('cov-fill').style.width = d.pct + '%';
-  document.getElementById('cov-pct').textContent = d.pct + ' %';
-  document.getElementById('cov-fill').style.background = d.pct >= 95 ? 'var(--green)' : d.pct >= 75 ? 'var(--accent)' : 'var(--red)';
-  document.getElementById('analyse-status').innerHTML =
-    d.pct >= 95 ? '<div class="alert alert-ok">✓ Schutzziel crowd-korrigiert erfüllt.</div>' :
-    d.pct >= 75 ? `<div class="alert alert-warn">⚠ ${d.gap} Punkte ungedeckt (crowd-korrigiert) — weitere Posten nötig.</div>` :
-    `<div class="alert alert-bad">✕ Schutzziel deutlich verfehlt. Mehr/nähere Posten erforderlich.</div>`;
+  document.getElementById('m-cov').textContent=d.pct+'%';
+  document.getElementById('m-ok').textContent=d.ok;
+  document.getElementById('m-gap').textContent=d.gap;
+  document.getElementById('cov-fill').style.width=d.pct+'%';
+  document.getElementById('cov-pct').textContent=d.pct+' %';
+  document.getElementById('cov-fill').style.background=d.pct>=95?'var(--green)':d.pct>=75?'var(--accent)':'var(--red)';
+  document.getElementById('analyse-status').innerHTML=
+    d.pct>=95?'<div class="alert alert-ok">✓ Schutzziel crowd-korrigiert erfüllt.</div>':
+    d.pct>=75?`<div class="alert alert-warn">⚠ ${d.gap} Punkte ungedeckt — weitere Posten nötig.</div>`:
+    `<div class="alert alert-bad">✕ Schutzziel deutlich verfehlt.</div>`;
   updateBadges();
 }
 
-function switchTab(n) {
-  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-  document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+// ════════════════════════════════════
+// SPEICHERN / LADEN
+// ════════════════════════════════════
+function getStateData() {
+  return {
+    routePoints,
+    routeFinished,
+    crowdFactors,
+    posten: posten.map(p=>({lat:p.lat,lng:p.lng,name:p.name,color:p.color})),
+    savedAt: new Date().toLocaleString('de-DE'),
+    mapCenter: map.getCenter(),
+    mapZoom: map.getZoom(),
+  };
+}
+
+function saveSlot(slot) {
+  const data = getStateData();
+  localStorage.setItem('sandi_slot_'+slot, JSON.stringify(data));
+  localStorage.setItem('sandi_last_slot', slot);
+  updateSlotUI();
+  showSaveStatus();
+}
+
+function loadSlot(slot) {
+  const raw = localStorage.getItem('sandi_slot_'+slot);
+  if (!raw) return;
+  try {
+    const data = JSON.parse(raw);
+    clearAll();
+    loadData(data);
+    localStorage.setItem('sandi_last_slot', slot);
+    showSaveStatus('✓ geladen');
+  } catch(e) { alert('Fehler beim Laden.'); }
+}
+
+function loadData(data) {
+  if (data.crowdFactors) {
+    crowdFactors = data.crowdFactors;
+    buildCrowdFactorsUI();
+    updateLegendRadii();
+  }
+  if (data.routePoints) {
+    routePoints  = data.routePoints;
+    routeFinished = data.routeFinished || false;
+    buildCheckPoints();
+    redrawRoute();
+    updateRouteStats();
+    updateCrowdSegList();
+  }
+  if (data.posten) {
+    data.posten.forEach(pd => {
+      const idx=posten.length, color=pd.color||POSTEN_COLORS[idx%POSTEN_COLORS.length];
+      const marker=L.circleMarker([pd.lat,pd.lng],{radius:12,fillColor:color,color:'#fff',weight:2.5,fillOpacity:.95,zIndexOffset:1000})
+        .bindTooltip(`<b>${pd.name}</b>`,{direction:'top',offset:[0,-14]}).addTo(map);
+      const p={lat:pd.lat,lng:pd.lng,name:pd.name,color,marker,isoLayers:{},isoPolygons:{}};
+      posten.push(p);
+      drawIsochrones(p);
+    });
+    renderPostenList();
+  }
+  if (data.mapCenter && data.mapZoom) {
+    map.setView([data.mapCenter.lat, data.mapCenter.lng], data.mapZoom);
+  }
+  updateBadges();
+  analyze();
+}
+
+function deleteSlot(slot) {
+  if (!confirm(`Slot ${slot} wirklich löschen?`)) return;
+  localStorage.removeItem('sandi_slot_'+slot);
+  updateSlotUI();
+}
+
+function updateSlotUI() {
+  ['A','B','C'].forEach(slot => {
+    const raw  = localStorage.getItem('sandi_slot_'+slot);
+    const data = raw ? JSON.parse(raw) : null;
+    const hasData = !!data;
+    const btn  = document.getElementById('slotbtn-'+slot);
+    const lbtn = document.getElementById('loadbtn-'+slot);
+    const dbtn = document.getElementById('delbtn-'+slot);
+    const name = document.getElementById('slotname-'+slot);
+    btn.textContent  = hasData ? `Überschreiben ${slot}` : `Speichern ${slot}`;
+    btn.classList.toggle('has-data', hasData);
+    lbtn.style.display = hasData ? '' : 'none';
+    dbtn.style.display = hasData ? '' : 'none';
+    name.textContent   = hasData ? (data.savedAt||'') : '';
+    lbtn.textContent   = `Laden ${slot}`;
+  });
+}
+
+function showSaveStatus(msg='✓ gespeichert') {
+  const el=document.getElementById('save-status');
+  el.textContent=msg; el.style.opacity='1';
+  setTimeout(()=>el.style.opacity='0', 2200);
+}
+
+// ════════════════════════════════════
+// HELPERS
+// ════════════════════════════════════
+function updateBadges(){
+  document.getElementById('badge-posten').innerHTML=`Posten <b>${posten.length}</b>`;
+  document.getElementById('badge-cov').innerHTML=`Coverage <b>${document.getElementById('m-cov').textContent}</b>`;
+}
+function switchTab(n){
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.tab-content').forEach(t=>t.classList.remove('active'));
   document.getElementById('tab-'+n).classList.add('active');
   document.getElementById('content-'+n).classList.add('active');
 }
 
-function updateRadiusHint() {
-  const s = parseInt(document.getElementById('walk-speed').value);
-  document.getElementById('radius-hint').innerHTML = `→ Freier Radius: <b>${3*s} m</b> · Dicht: <b>${Math.round(3*s*crowdFactors.dense)} m</b>`;
-  buildCrowdSliders();
-}
-
-function saveKey() { localStorage.setItem('ors_key', document.getElementById('ors-key').value); }
-function loadSettings() { const k = localStorage.getItem('ors_key'); if (k) document.getElementById('ors-key').value = k; }
-
-// ════════════
+// ════════════════════════════════════
 // EXPORT
-// ════════════
-function updateExport(stats) {
-  const d = new Date().toLocaleDateString('de-DE');
-  const pct = stats ? stats.pct + ' %' : '—';
-  const speed = parseInt(document.getElementById('walk-speed')?.value || 80);
-
-  let txt = `SANITÄTSDIENST-EINSATZPLAN\n${'═'.repeat(42)}\n`;
-  txt += `Veranstaltung:   Emder Matjeslauf 2026\n`;
-  txt += `Strecke:         Neue Führung (Baustelle Neutorstr.)\n`;
-  txt += `Datum Planung:   ${d}\n`;
-  txt += `Schutzziel:      3 min effektiv (crowd-korrigiert)\n`;
-  txt += `Coverage:        ${pct}\n\n`;
-  txt += `CROWD-FAKTOREN\n${'─'.repeat(42)}\n`;
-  txt += `  Dicht (Faldernstr./Rathausplatz/Neutorstr.): `;
-  txt += `×${crowdFactors.dense.toFixed(2)} → Radius ${Math.round(3*speed*crowdFactors.dense)} m\n`;
-  txt += `  Moderat (Osterstr./Nordertorstr./Brückstr.): `;
-  txt += `×${crowdFactors.moderate.toFixed(2)} → Radius ${Math.round(3*speed*crowdFactors.moderate)} m\n`;
-  txt += `  Erhöht (Spielmarke/Bollwerkstr./Bonnesse): `;
-  txt += `×${crowdFactors.elevated.toFixed(2)} → Radius ${Math.round(3*speed*crowdFactors.elevated)} m\n`;
-  txt += `  Frei (Friedrich-Ebert/Petkumer): `;
-  txt += `×${crowdFactors.free.toFixed(2)} → Radius ${Math.round(3*speed*crowdFactors.free)} m\n\n`;
-  txt += `SANITÄTSPOSTEN (${posten.length})\n${'─'.repeat(42)}\n`;
-  posten.forEach(p => {
-    txt += `\n${p.name}\n`;
-    txt += `  Koordinaten: ${p.lat.toFixed(6)}, ${p.lng.toFixed(6)}\n`;
-    txt += `  Google Maps: https://maps.google.com/?q=${p.lat.toFixed(6)},${p.lng.toFixed(6)}\n`;
+// ════════════════════════════════════
+function updateExport(stats){
+  const d=new Date().toLocaleDateString('de-DE');
+  const pct=stats?stats.pct+' %':'—';
+  let txt=`SANITÄTSDIENST-EINSATZPLAN\n${'═'.repeat(42)}\n`;
+  txt+=`Veranstaltung: Emder Matjeslauf 2026\nDatum: ${d}\nSchutzziel: 3 min effektiv (crowd-korrigiert)\nCoverage: ${pct}\n\n`;
+  txt+=`CROWD-FAKTOREN\n${'─'.repeat(42)}\n`;
+  ['dense','moderate','elevated','free'].forEach(z=>{
+    txt+=`  ${CROWD_LABELS[z].padEnd(10)} ×${crowdFactors[z].toFixed(2)} → Radius ${Math.round(TIME_MIN*BASE_SPEED*crowdFactors[z])} m\n`;
   });
-  txt += `\n${'─'.repeat(42)}\n! Streckenkoordinaten aus Rekonstruktion.\n! Abgleich mit Streckenplan Emder LG erforderlich.\n`;
-  document.getElementById('export-text').value = txt;
-
-  const geojson = {
-    type: 'FeatureCollection',
-    features: [
-      ...SEGMENTS.map(seg => ({
-        type: 'Feature',
-        properties: { name: seg.label, crowd_zone: seg.crowdZone, crowd_factor: crowdFactors[seg.crowdZone] },
-        geometry: { type: 'LineString', coordinates: seg.coords.map(c => [c[1], c[0]]) }
-      })),
-      ...posten.map(p => ({
-        type: 'Feature',
-        properties: { name: p.name, typ: 'sanitaetsposten' },
-        geometry: { type: 'Point', coordinates: [p.lng, p.lat] }
-      }))
-    ]
-  };
-  document.getElementById('export-json').value = JSON.stringify(geojson, null, 2);
+  txt+=`\nSANITÄTSPOSTEN (${posten.length})\n${'─'.repeat(42)}\n`;
+  posten.forEach(p=>{txt+=`\n${p.name}\n  ${p.lat.toFixed(6)}, ${p.lng.toFixed(6)}\n  https://maps.google.com/?q=${p.lat.toFixed(6)},${p.lng.toFixed(6)}\n`;});
+  document.getElementById('export-text').value=txt;
+  const geojson={type:'FeatureCollection',features:[
+    {type:'Feature',properties:{name:'Strecke',fertig:routeFinished},
+     geometry:{type:'LineString',coordinates:routePoints.map(p=>[p.ll[1],p.ll[0]])}},
+    ...posten.map(p=>({type:'Feature',properties:{name:p.name},geometry:{type:'Point',coordinates:[p.lng,p.lat]}}))
+  ]};
+  document.getElementById('export-json').value=JSON.stringify(geojson,null,2);
 }
-
-function copyText() { navigator.clipboard.writeText(document.getElementById('export-text').value).then(() => alert('Kopiert!')); }
-function copyJSON() { navigator.clipboard.writeText(document.getElementById('export-json').value).then(() => alert('GeoJSON kopiert!')); }
+function copyText(){navigator.clipboard.writeText(document.getElementById('export-text').value).then(()=>showSaveStatus('✓ kopiert'));}
+function copyJSON(){navigator.clipboard.writeText(document.getElementById('export-json').value).then(()=>showSaveStatus('✓ kopiert'));}
 
 window.addEventListener('DOMContentLoaded', init);
 </script>
